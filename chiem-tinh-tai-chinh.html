@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chiêm Tinh Tài Chính</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg0: #0b0f1a;
+  --bg1: #111827;
+  --bg2: #1a2235;
+  --bg3: #1e2d45;
+  --border: #1f2d40;
+  --border2: #2a3a50;
+  --text1: #e2e8f0;
+  --text2: #94a3b8;
+  --text3: #546a82;
+  --green: #10d9a0;
+  --red: #f0364f;
+  --pink: #f472b6;
+  --yellow: #fbbf24;
+  --blue: #60a5fa;
+  --indigo: #818cf8;
+  --day-red: #9b1c2e;
+  --day-green: #166534;
+  --day-gray: #1e2d45;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg0);color:var(--text1);font-family:'Segoe UI',system-ui,sans-serif;font-size:13px;min-height:100vh;overflow-x:hidden}
+
+/* HEADER */
+.hdr{background:var(--bg1);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:16px}
+.hdr-logo{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;color:var(--green)}
+.hdr-logo svg{width:24px;height:24px}
+.hdr-sep{width:1px;height:20px;background:var(--border2)}
+.hdr-tag{font-size:11px;padding:2px 8px;border-radius:4px;background:rgba(16,217,160,0.1);color:var(--green);border:1px solid rgba(16,217,160,0.2)}
+.hdr-right{margin-left:auto;font-size:11px;color:var(--text3)}
+.hdr-right span{color:var(--yellow)}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:240px 1fr;height:calc(100vh - 45px)}
+
+/* SIDEBAR */
+.sidebar{background:var(--bg1);border-right:1px solid var(--border);padding:14px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
+.sb-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.sel-row{display:flex;gap:6px}
+select{background:var(--bg2);border:1px solid var(--border2);color:var(--text1);padding:6px 8px;border-radius:6px;font-size:12px;cursor:pointer;flex:1;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394a3b8'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
+select:focus{outline:1px solid var(--green)}
+.cal-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:3px}
+.day-btn{aspect-ratio:1;border-radius:5px;border:none;cursor:pointer;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;transition:all 0.12s;position:relative;color:#fff}
+.day-btn:hover{filter:brightness(1.2);transform:scale(1.05)}
+.day-btn.red{background:var(--day-red)}
+.day-btn.green{background:var(--day-green)}
+.day-btn.gray{background:var(--day-gray);color:var(--text3)}
+.day-btn.sel{box-shadow:0 0 0 2px var(--yellow)}
+.day-btn.cur::after{content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:3px;height:3px;border-radius:50%;background:var(--yellow)}
+.today-badge{font-size:10px;color:var(--yellow);text-align:right}
+.legend-box{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:10px}
+.leg-item{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text2);margin-bottom:5px}
+.leg-item:last-child{margin-bottom:0}
+.leg-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+.lunar-info{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:10px}
+.lunar-row{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text2);padding:3px 0;border-bottom:1px solid var(--border)}
+.lunar-row:last-child{border-bottom:none}
+.lunar-val{font-weight:700;color:var(--text1)}
+
+/* MAIN CONTENT */
+.content{padding:14px;display:flex;flex-direction:column;gap:14px;overflow:auto}
+.card{background:var(--bg1);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.card-hdr{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.card-title{font-size:13px;font-weight:600;color:var(--text1)}
+.card-body{padding:14px}
+.tabs{display:flex;gap:3px}
+.tab{padding:4px 10px;border-radius:5px;font-size:11px;border:1px solid transparent;cursor:pointer;background:transparent;color:var(--text3);transition:all 0.12s}
+.tab:hover{color:var(--text2)}
+.tab.on{background:var(--bg2);border-color:var(--border2);color:var(--green)}
+
+/* INTRADAY */
+.wave-alert{font-size:11px;color:var(--text2);margin-bottom:10px;line-height:1.6}
+.wave-badges{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
+.wbadge{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:700;background:rgba(240,54,79,0.13);color:var(--red);border:1px solid rgba(240,54,79,0.25)}
+.wbadge.ok{background:rgba(16,217,160,0.1);color:var(--green);border-color:rgba(16,217,160,0.2)}
+.cw{position:relative;width:100%}
+.cw240{height:240px}
+.cw160{height:160px}
+.cw180{height:180px}
+.cleg{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+.cleg-i{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text2)}
+.cleg-d{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+
+/* DAY DETAIL */
+.day-detail{border-top:1px solid var(--border);margin-top:10px;padding-top:10px}
+.dd-score-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.dd-score-lbl{font-size:11px;color:var(--text2)}
+.dd-score-val{font-size:18px;font-weight:800}
+.dd-score-val.pos{color:var(--green)}
+.dd-score-val.neg{color:var(--red)}
+.dd-phase{font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--border2);color:var(--text2);background:var(--bg2)}
+.aspects-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.asp{display:flex;align-items:center;justify-content:space-between;font-size:10px;padding:4px 8px;border-radius:4px;background:var(--bg2)}
+.asp.pos{border-left:2px solid var(--green)}
+.asp.neg{border-left:2px solid var(--red)}
+.asp-name{color:var(--text2)}
+.asp-val.pos{color:var(--green);font-weight:700}
+.asp-val.neg{color:var(--red);font-weight:700}
+
+/* MONTH STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.sc{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:8px 10px;text-align:center}
+.sc-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px}
+.sc-val{font-size:20px;font-weight:800}
+.sc-val.g{color:var(--green)}.sc-val.r{color:var(--red)}.sc-val.y{color:var(--yellow)}.sc-val.b{color:var(--blue)}
+.ch-sec-title{font-size:11px;font-weight:600;color:var(--text3);margin-bottom:7px;margin-top:10px}
+
+/* BOTTOM SCROLLBAR for big months chart */
+.month-label{font-size:14px;font-weight:800;color:var(--text1);margin-bottom:12px}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-logo">
+    <svg viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="10" stroke="#10d9a0" stroke-width="1.2" fill="none" stroke-dasharray="3,2"/>
+      <circle cx="12" cy="4"  r="1.8" fill="#10d9a0"/>
+      <circle cx="12" cy="20" r="1.4" fill="#fbbf24"/>
+      <circle cx="4"  cy="12" r="1.4" fill="#f472b6"/>
+      <circle cx="20" cy="12" r="1.4" fill="#60a5fa"/>
+      <circle cx="18.5" cy="5.5"  r="1.1" fill="#818cf8"/>
+      <circle cx="5.5"  cy="18.5" r="1.1" fill="#f0364f"/>
+    </svg>
+    Chiêm Tinh Tài Chính
+  </div>
+  <div class="hdr-sep"></div>
+  <div class="hdr-tag">Lunar Cycle Engine v2.0</div>
+  <div class="hdr-right">Múi giờ: <span>Asia/Ho_Chi_Minh GMT+7</span> &nbsp;|&nbsp; Dữ liệu: <span>Reverse-Engineered từ T3–T6/2026</span></div>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div>
+      <div class="sb-label">Chiêm Tinh</div>
+      <div class="sel-row">
+        <select id="sel-m" onchange="render()">
+          <option value="1">Tháng 1</option><option value="2">Tháng 2</option>
+          <option value="3">Tháng 3</option><option value="4">Tháng 4</option>
+          <option value="5">Tháng 5</option><option value="6" selected>Tháng 6</option>
+          <option value="7">Tháng 7</option><option value="8">Tháng 8</option>
+          <option value="9">Tháng 9</option><option value="10">Tháng 10</option>
+          <option value="11">Tháng 11</option><option value="12">Tháng 12</option>
+        </select>
+        <select id="sel-y" onchange="render()">
+          <option value="2024">2024</option>
+          <option value="2025">2025</option>
+          <option value="2026" selected>2026</option>
+          <option value="2027">2027</option>
+          <option value="2028">2028</option>
+          <option value="2029">2029</option>
+          <option value="2030">2030</option>
+        </select>
+      </div>
+    </div>
+
+    <div>
+      <div class="sb-label">Lịch</div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div class="today-badge" id="today-badge" style="margin-top:6px"></div>
+    </div>
+
+    <div class="legend-box">
+      <div class="leg-item"><div class="leg-dot" style="background:var(--day-green)"></div> Ngày tốt — sóng thuận</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--day-red)"></div> Ngày xấu — sóng nghịch</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--day-gray)"></div> Trung tính</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--yellow);border-radius:50%"></div> Ngày đang chọn</div>
+    </div>
+
+    <div class="lunar-info" id="lunar-info"></div>
+  </div>
+
+  <div class="content">
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-title" id="card-title">Dự báo Chiêm Tinh — Tháng 6/2026</div>
+        <div class="tabs">
+          <button class="tab on" onclick="switchTab('wave',this)">Sóng ngày</button>
+          <button class="tab" onclick="switchTab('month',this)">Thống kê tháng</button>
+        </div>
+      </div>
+
+      <!-- WAVE PANEL -->
+      <div class="card-body" id="p-wave">
+        <div class="wave-alert">Khoảng thời gian thị trường <strong style="color:var(--red)">sóng mạnh</strong>: <span id="wave-times" style="color:var(--red)">—</span></div>
+        <div class="cw cw240"><canvas id="wvChart" role="img" aria-label="Biểu đồ sóng chiêm tinh intraday">Sóng năng lượng chiêm tinh theo giờ.</canvas></div>
+        <div class="cleg">
+          <div class="cleg-i"><div class="cleg-d" style="background:var(--green)"></div>Sóng Hôm Nay</div>
+          <div class="cleg-i"><div class="cleg-d" style="background:var(--pink);width:16px;height:3px;border-radius:0"></div>Trục ngưỡng</div>
+        </div>
+        <div class="day-detail" id="day-detail"></div>
+      </div>
+
+      <!-- MONTH PANEL -->
+      <div class="card-body" id="p-month" style="display:none">
+        <div class="month-label" id="month-label-big">Tháng 6:</div>
+        <div class="stats-grid" id="stats-grid"></div>
+        <div class="ch-sec-title">Kết quả chiêm tinh từng ngày</div>
+        <div class="cw cw160"><canvas id="resChart" role="img" aria-label="Biểu đồ kết quả ngày">Kết quả chiêm tinh theo ngày.</canvas></div>
+        <div class="ch-sec-title" style="margin-top:14px">Chỉ số năng lượng (Chiêm Tinh)</div>
+        <div class="cw cw180"><canvas id="engChart" role="img" aria-label="Biểu đồ chỉ số năng lượng">Thanh khoản, khối lượng DC và chu kỳ.</canvas></div>
+        <div class="cleg" style="margin-top:10px">
+          <div class="cleg-i"><div class="cleg-d" style="background:var(--pink)"></div>Thanh Khoản</div>
+          <div class="cleg-i"><div class="cleg-d" style="background:var(--yellow)"></div>Khối Lượng DC</div>
+          <div class="cleg-i"><div class="cleg-d" style="background:var(--blue);width:16px;height:3px;border-radius:0"></div>Chu Kỳ</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  LUNAR ENGINE — Reverse-Engineered from T3-T6/2026 Data
+// ═══════════════════════════════════════════════════════════
+
+// Known New Moon dates (Julian Days basis)
+// Lunar cycle ≈ 29.53059 days
+const LUNAR_CYCLE = 29.53059;
+
+// Reference New Moon: 2026-03-29 00:00 UTC
+const REF_NM_JD = 2461128.5; // Mar 29 2026 (approx)
+
+// More precise: pre-computed New Moons
+const NEW_MOONS = {
+  // year-month: day of new moon (local Vietnam date, approx)
+  '2024-1':11,'2024-2':10,'2024-3':10,'2024-4':9,'2024-5':8,'2024-6':6,
+  '2024-7':6,'2024-8':4,'2024-9':3,'2024-10':3,'2024-11':1,'2024-12':1,
+  '2025-1':29,'2025-2':28,'2025-3':29,'2025-4':27,'2025-5':27,'2025-6':25,
+  '2025-7':24,'2025-8':23,'2025-9':21,'2025-10':21,'2025-11':20,'2025-12':20,
+  '2026-1':19,'2026-2':18,'2026-3':29,'2026-4':27,'2026-5':27,'2026-6':25,
+  '2026-7':25,'2026-8':23,'2026-9':22,'2026-10':21,'2026-11':20,'2026-12':20,
+  '2027-1':18,'2027-2':17,'2027-3':19,'2027-4':17,'2027-5':17,'2027-6':15,
+  '2027-7':15,'2027-8':13,'2027-9':11,'2027-10':11,'2027-11':10,'2027-12':9,
+  '2028-1':8,'2028-2':6,'2028-3':7,'2028-4':5,'2028-5':5,'2028-6':3,
+  '2028-7':3,'2028-8':1,'2028-9':30,'2028-10':29,'2028-11':28,'2028-12':28,
+  '2029-1':26,'2029-2':25,'2029-3':27,'2029-4':25,'2029-5':25,'2029-6':23,
+  '2029-7':23,'2029-8':21,'2029-9':20,'2029-10':19,'2029-11':18,'2029-12':17,
+  '2030-1':16,'2030-2':15,'2030-3':17,'2030-4':16,'2030-5':15,'2030-6':13,
+  '2030-7':13,'2030-8':11,'2030-9':10,'2030-10':9,'2030-11':8,'2030-12':7,
+};
+
+function toJD(y, m, d) {
+  const a = Math.floor((14 - m) / 12);
+  const Y = y + 4800 - a;
+  const M = m + 12 * a - 3;
+  return d + Math.floor((153*M+2)/5) + 365*Y + Math.floor(Y/4) - Math.floor(Y/100) + Math.floor(Y/400) - 32045;
+}
+
+function getLunarAge(y, m, d) {
+  // Find the most recent new moon before this date
+  const targetJD = toJD(y, m, d);
+  
+  // Try current, prev, prev-prev month
+  let bestAge = null;
+  for (let dm = -2; dm <= 1; dm++) {
+    let tm = m + dm;
+    let ty = y;
+    while (tm <= 0) { tm += 12; ty--; }
+    while (tm > 12) { tm -= 12; ty++; }
+    const key = `${ty}-${tm}`;
+    if (NEW_MOONS[key] !== undefined) {
+      const nmJD = toJD(ty, tm, NEW_MOONS[key]);
+      const age = targetJD - nmJD;
+      if (age >= 0 && age < LUNAR_CYCLE) {
+        bestAge = age;
+      }
+    }
+  }
+  
+  if (bestAge === null) {
+    // Fallback: use reference NM and cycle
+    const diff = (targetJD - REF_NM_JD) % LUNAR_CYCLE;
+    bestAge = diff < 0 ? diff + LUNAR_CYCLE : diff;
+  }
+  return bestAge;
+}
+
+// ─────────────────────────────────────────
+// SCORE TABLE (derived from pattern analysis of T3-T6/2026)
+// Positive windows: ages 1, 5, 7-8, 13-15, 19-20, 23
+// Negative zones: 9-11 (sq), 17 (sq), 24-28 (balsamic)
+// ─────────────────────────────────────────
+const SCORE_TABLE = {
+  0:-3, 1:5, 2:-3, 3:-3, 4:-3, 5:5, 6:-3, 7:5, 8:10,
+  9:-5, 10:-5, 11:-5, 12:-3, 13:5, 14:5, 15:5,
+  16:-3, 17:-5, 18:-3, 19:5, 20:5, 21:-3, 22:-3,
+  23:10, 24:-5, 25:-5, 26:-5, 27:-5, 28:-10, 29:-3
+};
+
+const PHASE_NAMES = [
+  'Trăng Non (New Moon)', 'Trăng Lưỡi Liềm Mọc', 'Trăng Lưỡi Liềm Mọc',
+  'Trăng Lưỡi Liềm Mọc', 'Trăng Lưỡi Liềm Mọc', 'Quý I Mọc',
+  'Quý I Mọc', 'Bán Nguyệt (1Q)', 'Bán Nguyệt (1Q+1)',
+  'Trăng Tròn Dần', 'Trăng Tròn Dần', 'Trăng Tròn Dần',
+  'Trăng Tròn Dần', 'Trăng Tròn (Pre)', 'Trăng Tròn (Full Moon)',
+  'Trăng Tròn (Post)', 'Trăng Khuyết Lặn', 'Trăng Khuyết Lặn',
+  'Trăng Khuyết Lặn', 'Tam hợp Lặn', 'Tam hợp Lặn',
+  'Bán Nguyệt Lặn (3Q)', 'Bán Nguyệt Lặn', 'Quý IV+',
+  'Bán Tối (Balsamic)', 'Bán Tối (Balsamic)', 'Bán Tối (Balsamic)',
+  'Bán Tối (Balsamic)', 'Tối (Dark Moon)', 'Sắp Trăng Non'
+];
+
+const ASPECTS_BY_PHASE = {
+  1:  [{p:'☉ Mặt Trời — ☽ Mặt Trăng', t:'Hội Hợp', w:'+5', cls:'pos'},{p:'♃ Sao Mộc — ♀ Sao Kim', t:'Tam Hợp', w:'+5', cls:'pos'}],
+  5:  [{p:'☽ Mặt Trăng — ☉ Mặt Trời', t:'Lục Hợp', w:'+5', cls:'pos'},{p:'♀ Sao Kim — ♂ Sao Hỏa', t:'Sextile', w:'+3', cls:'pos'}],
+  7:  [{p:'☽ Mặt Trăng — ☉ Mặt Trời', t:'Vuông (1Q)', w:'-3', cls:'neg'},{p:'☽ Mặt Trăng — ♃ Sao Mộc', t:'Tam Hợp', w:'+5', cls:'pos'}],
+  8:  [{p:'☽ Mặt Trăng — ♃ Sao Mộc', t:'Tam Hợp', w:'+8', cls:'pos'},{p:'☉ Mặt Trời — ♀ Sao Kim', t:'Lục Hợp', w:'+5', cls:'pos'}],
+  9:  [{p:'☽ Mặt Trăng — ♄ Sao Thổ', t:'Xung Khắc', w:'-5', cls:'neg'},{p:'☽ Mặt Trăng — ♂ Sao Hỏa', t:'Vuông', w:'-5', cls:'neg'}],
+  10: [{p:'☽ Mặt Trăng — ♄ Sao Thổ', t:'Xung Khắc', w:'-7', cls:'neg'},{p:'☿ Sao Thủy — ♂ Sao Hỏa', t:'Đối Nghịch', w:'-5', cls:'neg'}],
+  11: [{p:'☽ Mặt Trăng — ♂ Sao Hỏa', t:'Vuông', w:'-5', cls:'neg'},{p:'☉ Mặt Trời — ♄ Sao Thổ', t:'Xung Khắc', w:'-5', cls:'neg'}],
+  13: [{p:'☽ Mặt Trăng — ♃ Sao Mộc', t:'Lục Hợp', w:'+5', cls:'pos'},{p:'♀ Sao Kim — ♄ Sao Thổ', t:'Tam Hợp', w:'+3', cls:'pos'}],
+  14: [{p:'☉ Mặt Trời — ☽ Mặt Trăng', t:'Đối Nghịch (FM)', w:'+5', cls:'pos'},{p:'☽ Mặt Trăng — ♃ Sao Mộc', t:'Tam Hợp', w:'+5', cls:'pos'}],
+  15: [{p:'☽ Mặt Trăng — ♀ Sao Kim', t:'Tam Hợp', w:'+5', cls:'pos'},{p:'☉ Mặt Trời — ♃ Sao Mộc', t:'Lục Hợp', w:'+3', cls:'pos'}],
+  17: [{p:'☽ Mặt Trăng — ♂ Sao Hỏa', t:'Đối Nghịch', w:'-5', cls:'neg'},{p:'☉ Mặt Trời — ♄ Sao Thổ', t:'Vuông', w:'-5', cls:'neg'}],
+  19: [{p:'☽ Mặt Trăng — ☉ Mặt Trời', t:'Tam Hợp', w:'+5', cls:'pos'},{p:'♃ Sao Mộc — ♂ Sao Hỏa', t:'Tam Hợp', w:'+3', cls:'pos'}],
+  20: [{p:'☽ Mặt Trăng — ♀ Sao Kim', t:'Lục Hợp', w:'+5', cls:'pos'},{p:'♃ Sao Mộc — ♄ Sao Thổ', t:'Lục Hợp', w:'+3', cls:'pos'}],
+  23: [{p:'☽ Mặt Trăng — ♃ Sao Mộc', t:'Hội Hợp (3Q+2)', w:'+8', cls:'pos'},{p:'♀ Sao Kim — ☉ Mặt Trời', t:'Tam Hợp', w:'+5', cls:'pos'}],
+  24: [{p:'☽ Mặt Trăng — ♂ Sao Hỏa', t:'Vuông (Balsamic)', w:'-5', cls:'neg'},{p:'♄ Sao Thổ — ♀ Sao Kim', t:'Xung Khắc', w:'-5', cls:'neg'}],
+  28: [{p:'☽ Mặt Trăng — ♂ Sao Hỏa', t:'Đối Nghịch (Dark)', w:'-10', cls:'neg'},{p:'☽ Mặt Trăng — ♄ Sao Thổ', t:'Vuông', w:'-7', cls:'neg'}],
+};
+
+function getDayScore(y, m, d) {
+  const age = getLunarAge(y, m, d);
+  const ageInt = Math.floor(age);
+  const baseScore = SCORE_TABLE[ageInt] ?? -3;
+  
+  // Saturn/Mars modifier for extreme events
+  // Day of year modulates planetary longitude
+  const doy = Math.floor((new Date(y,m-1,d) - new Date(y,0,1)) / 86400000);
+  const saturnLong = (doy * 0.0335 + 50) % 360;
+  const marsLong   = (doy * 0.524  + 120) % 360;
+  const moonLong   = (age / LUNAR_CYCLE) * 360;
+  
+  const satMoonDiff = Math.abs(saturnLong - moonLong) % 180;
+  const marsMoonDiff = Math.abs(marsLong - moonLong) % 180;
+  
+  const hardSaturn = satMoonDiff < 8 || Math.abs(satMoonDiff - 90) < 8;
+  const hardMars   = marsMoonDiff < 8 || Math.abs(marsMoonDiff - 90) < 8;
+  
+  let score = baseScore;
+  if (hardSaturn && hardMars && score < 0) score = -10;
+  if (hardSaturn && score > 0 && (ageInt === 14)) score = -10; // FM + Saturn = reversed
+  if (!hardSaturn && !hardMars && score === 10) score = 10;
+  
+  return {score, age, ageInt, phase: PHASE_NAMES[Math.min(ageInt,29)]};
+}
+
+function getDaysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
+
+// ─────────────────────────────────────────
+// INTRADAY WAVE (Moon angular transits, GMT+7 Saigon)
+// ─────────────────────────────────────────
+function getIntradayWave(y, m, d) {
+  const {age, score} = getDayScore(y, m, d);
+  const moonPhase = (age / LUNAR_CYCLE) * 2 * Math.PI;
+  const doy = Math.floor((new Date(y,m-1,d) - new Date(y,0,1)) / 86400000);
+  
+  // Saigon lat 10.8, LST offset causes Moon transit near 10-11h local
+  const moonMCHour = 10.5 + 0.8 * Math.sin(moonPhase);
+  const moonASCHour = moonMCHour + 6;
+  const moonDSCHour = moonMCHour + 12;
+  const moonICHour  = moonMCHour + 18;
+  
+  // Sun transit is always near 12h local (noon)
+  const sunMCHour = 12.0;
+  
+  // Base energy curve (market hours pattern)
+  const BASE = 120;
+  const wave = [];
+  for (let i = 0; i <= 48; i++) {
+    const h = i * 0.5;
+    
+    // Base market curve: low overnight, rises 9h, peaks 10-14h, fades after
+    let base = BASE;
+    if (h >= 9 && h <= 17) {
+      base = BASE + 80 * Math.sin(Math.PI * (h - 9) / 8);
+    } else if (h > 17 && h <= 22) {
+      base = BASE + 30 * Math.exp(-(h-17)*0.5);
+    } else if (h < 9) {
+      base = BASE * 0.5;
+    }
+    
+    // Moon angular boosts (when Moon crosses ASC/MC/DSC/IC)
+    const angulars = [moonMCHour, moonASCHour % 24, moonDSCHour % 24, moonICHour % 24, sunMCHour];
+    let angBoost = 0;
+    angulars.forEach((ah, idx) => {
+      const dist = Math.min(Math.abs(h - ah), 24 - Math.abs(h - ah));
+      const strength = idx < 4 ? 90 : 60;
+      angBoost += strength * Math.exp(-dist * dist / 1.8);
+    });
+    
+    // Scale by day's energy level
+    const energyMult = score >= 5 ? 1.4 : score <= -5 ? 0.6 : 1.0;
+    const val = Math.max(-50, Math.round((base + angBoost * 0.7) * energyMult));
+    wave.push(val);
+  }
+  return wave;
+}
+
+function getStrongTimes(wave) {
+  const THRESH = 200;
+  const times = [];
+  let inW = false, start = 0;
+  wave.forEach((v, i) => {
+    const h = i * 0.5;
+    if (v > THRESH && !inW) { inW = true; start = h; }
+    if (v <= THRESH && inW) {
+      inW = false;
+      const fmt = n => `${Math.floor(n)}h${n%1?'30':''}`;
+      times.push(`(${fmt(start)}→${fmt(h)})`);
+    }
+  });
+  if (inW) { const fmt = n => `${Math.floor(n)}h${n%1?'30':''}`; times.push(`(${fmt(start)}→24h)`); }
+  return times.slice(0, 5);
+}
+
+// ─────────────────────────────────────────
+// MONTHLY METRICS (Thanh Khoản / Khối Lượng DC / Chu Kỳ)
+// ─────────────────────────────────────────
+function getMonthData(y, m) {
+  const days = getDaysInMonth(y, m);
+  return Array.from({length: days}, (_, i) => {
+    const d = i + 1;
+    const {score, age} = getDayScore(y, m, d);
+    
+    // Thanh Khoản: Moon velocity proxy (faster near NM/FM, slower at quarters)
+    const moonVel = 12 + 2 * Math.cos((age / LUNAR_CYCLE) * 4 * Math.PI);
+    const absScore = Math.abs(score);
+    const liquidity = Math.round(Math.min(95, 15 + moonVel * 3 + absScore * 4 + Math.sin(age * 0.7) * 10));
+    
+    // Khối Lượng DC: planetary speed (Sun/Mercury velocity varies through year)
+    const doy = Math.floor((new Date(y,m-1,d) - new Date(y,0,1)) / 86400000);
+    const dcVol = Math.round(Math.max(2, 8 + 12 * Math.abs(Math.sin(doy * 0.21)) + Math.abs(score) * 0.5));
+    
+    // Chu Kỳ: longer-term Jupiter cycle (~12yr) + Saturn cycle (~29yr)
+    const cycleJup = 12 + 10 * Math.sin((doy / 365.25) * 2 * Math.PI * (1/12) + 0.8);
+    const cycleSat = 8 * Math.cos((doy / 365.25) * 2 * Math.PI * (1/29.5) + 1.2);
+    const cycle = Math.round(Math.max(0, cycleJup + cycleSat));
+    
+    return {d, score, age: Math.floor(age), liquidity, dcVol, cycle};
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  UI STATE & RENDERING
+// ═══════════════════════════════════════════════════════════
+let selDay = new Date().getDate();
+let curTab = 'wave';
+let wvC = null, resC = null, engC = null;
+
+function switchTab(tab, btn) {
+  curTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('p-wave').style.display = tab==='wave' ? 'block' : 'none';
+  document.getElementById('p-month').style.display = tab==='month' ? 'block' : 'none';
+  render();
+}
+
+function render() {
+  const M = parseInt(document.getElementById('sel-m').value);
+  const Y = parseInt(document.getElementById('sel-y').value);
+  const days = getDaysInMonth(Y, M);
+  const now = new Date();
+  const isNow = now.getMonth()+1 === M && now.getFullYear() === Y;
+  const todayD = isNow ? now.getDate() : null;
+
+  // Clamp selDay
+  if (selDay > days) selDay = days;
+
+  document.getElementById('card-title').textContent = `Dự báo Chiêm Tinh — Tháng ${M}/${Y}`;
+  document.getElementById('month-label-big').textContent = `Tháng ${M}:`;
+
+  // Calendar
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+  for (let d = 1; d <= days; d++) {
+    const {score} = getDayScore(Y, M, d);
+    const cls = score > 0 ? 'green' : score < -3 ? 'red' : 'gray';
+    const btn = document.createElement('button');
+    btn.className = `day-btn ${cls}${d===selDay?' sel':''}${d===todayD?' cur':''}`;
+    btn.textContent = String(d).padStart(2,'0');
+    btn.onclick = () => { selDay = d; render(); };
+    grid.appendChild(btn);
+  }
+
+  document.getElementById('today-badge').textContent = 
+    isNow ? `Hôm nay: ${Y}-${String(M).padStart(2,'0')}-${String(todayD).padStart(2,'0')}` 
+          : `Tháng ${M}/${Y}`;
+
+  // Lunar info for selected day
+  const {score, age, ageInt, phase} = getDayScore(Y, M, selDay);
+  const nmKey = `${Y}-${M}`;
+  const nmDay = NEW_MOONS[nmKey];
+  const fmDay = nmDay ? Math.round(nmDay + 14.77) : '?';
+  document.getElementById('lunar-info').innerHTML = `
+    <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Chu Kỳ Mặt Trăng</div>
+    <div class="lunar-row"><span>Tuổi Mặt Trăng</span><span class="lunar-val">${age.toFixed(1)} ngày</span></div>
+    <div class="lunar-row"><span>Pha hiện tại</span><span class="lunar-val" style="font-size:10px;text-align:right;max-width:130px">${phase}</span></div>
+    <div class="lunar-row"><span>Trăng Non tháng ${M}</span><span class="lunar-val">${nmDay ? `Ngày ${nmDay}` : '—'}</span></div>
+    <div class="lunar-row"><span>Trăng Tròn (ước tính)</span><span class="lunar-val">${nmDay ? `~Ngày ${fmDay > days ? fmDay-days+'/'+(M%12+1) : fmDay}` : '—'}</span></div>
+    <div class="lunar-row" style="border-bottom:none"><span>Điểm năng lượng</span><span class="lunar-val" style="color:${score>0?'var(--green)':'var(--red)'}">${score>0?'+':''}${score}</span></div>
+  `;
+
+  if (curTab === 'wave') renderWave(Y, M, selDay);
+  else renderMonth(Y, M, days);
+}
+
+function renderWave(Y, M, D) {
+  const wave = getIntradayWave(Y, M, D);
+  const times = getStrongTimes(wave);
+  const {score, ageInt} = getDayScore(Y, M, D);
+  
+  document.getElementById('wave-times').textContent = 
+    times.length ? times.join(' ') : 'Không có sóng mạnh hôm nay';
+
+  const labels = Array.from({length:49},(_,i)=>i%2===0?`${i/2}h`:'');
+  const thresh = Array(49).fill(200);
+
+  if (wvC) wvC.destroy();
+  const ctx = document.getElementById('wvChart').getContext('2d');
+  wvC = new Chart(ctx, {
+    type:'line',
+    data:{labels,datasets:[
+      {label:'Sóng Hôm Nay',data:wave,borderColor:'#10d9a0',backgroundColor:'rgba(16,217,160,0.12)',
+       fill:true,tension:0.45,pointRadius:0,borderWidth:2},
+      {label:'Trục',data:thresh,borderColor:'#f472b6',backgroundColor:'transparent',
+       fill:false,tension:0,pointRadius:0,borderWidth:1.5,borderDash:[5,3]}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{
+        mode:'index',intersect:false,
+        backgroundColor:'#1a2235',titleColor:'#94a3b8',bodyColor:'#e2e8f0',
+        borderColor:'#1f2d40',borderWidth:1,
+        callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.raw}`}
+      }},
+      scales:{
+        x:{grid:{color:'#1f2d40'},ticks:{color:'#546a82',font:{size:9},autoSkip:false,maxRotation:0,callback:(v,i)=>labels[i]}},
+        y:{grid:{color:'#1f2d40'},ticks:{color:'#546a82',font:{size:9}},min:-80,max:450,
+          ticks:{callback:v=>v===200?'Sóng +':v===0?'0':v===-50?'Sóng −':''}}
+      }
+    }
+  });
+
+  // Day detail
+  const scoreSign = score > 0 ? '+' : '';
+  const aspData = ASPECTS_BY_PHASE[ageInt] || [
+    {p:'☽ Mặt Trăng — Thiên Cung', t:'Vị trí tự nhiên', w: score>0?'+3':'-3', cls: score>0?'pos':'neg'},
+    {p:'☉ Mặt Trời — Điểm Góc', t:'Góc chiếu mặt trời', w: score>0?'+3':'-3', cls: score>0?'pos':'neg'}
+  ];
+  const {phase} = getDayScore(Y, M, D);
+  document.getElementById('day-detail').innerHTML = `
+    <div class="dd-score-row">
+      <div class="dd-score-lbl">Điểm chiêm tinh ngày ${D}/${M}/${Y}</div>
+      <div class="dd-score-val ${score>=0?'pos':'neg'}">${scoreSign}${score}</div>
+      <div class="dd-phase">${phase}</div>
+    </div>
+    <div class="aspects-grid">
+      ${aspData.map(a=>`
+        <div class="asp ${a.cls}">
+          <span class="asp-name">${a.p}</span>
+          <span class="asp-val ${a.cls}">${a.t} (${a.w})</span>
+        </div>`).join('')}
+    </div>
+  `;
+}
+
+function renderMonth(Y, M, days) {
+  const data = getMonthData(Y, M);
+  const labels = data.map(r=>r.d);
+  const scores = data.map(r=>r.score);
+  const liq = data.map(r=>r.liquidity);
+  const dc  = data.map(r=>r.dcVol);
+  const cyc = data.map(r=>r.cycle);
+
+  const posN = scores.filter(s=>s>0).length;
+  const negN = scores.filter(s=>s<0).length;
+  const maxLiq = Math.max(...liq);
+  const maxDC  = Math.max(...dc);
+
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="sc"><div class="sc-lbl">Ngày Tốt</div><div class="sc-val g">${posN}</div></div>
+    <div class="sc"><div class="sc-lbl">Ngày Xấu</div><div class="sc-val r">${negN}</div></div>
+    <div class="sc"><div class="sc-lbl">Thanh Khoản</div><div class="sc-val y">${maxLiq}</div></div>
+    <div class="sc"><div class="sc-lbl">Khối Lượng DC</div><div class="sc-val b">${maxDC}</div></div>
+  `;
+
+  const barColors = scores.map(s=>s>0?'rgba(96,165,250,0.85)':'rgba(240,54,79,0.82)');
+
+  if (resC) resC.destroy();
+  resC = new Chart(document.getElementById('resChart').getContext('2d'),{
+    type:'bar',
+    data:{labels,datasets:[{label:'Kết Quả',data:scores,backgroundColor:barColors,borderRadius:2,barPercentage:0.72}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{
+        backgroundColor:'#1a2235',titleColor:'#94a3b8',bodyColor:'#e2e8f0',borderColor:'#1f2d40',borderWidth:1,
+        callbacks:{label:c=>`Kết quả: ${c.raw>0?'+':''}${c.raw}`}
+      }},
+      scales:{
+        x:{grid:{color:'#1a2235'},ticks:{color:'#546a82',font:{size:9},autoSkip:false,maxRotation:0,
+          callback:(v,i)=>String(labels[i]).padStart(2,'0')}},
+        y:{grid:{color:'#1f2d40'},ticks:{color:'#546a82',font:{size:9}},min:-12,max:12,
+          title:{display:true,text:'Kết quả',color:'#546a82',font:{size:9}}}
+      }
+    }
+  });
+
+  if (engC) engC.destroy();
+  engC = new Chart(document.getElementById('engChart').getContext('2d'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {type:'bar',label:'Thanh Khoản',data:liq,backgroundColor:'rgba(244,114,182,0.75)',borderRadius:2,barPercentage:0.65,order:2},
+      {type:'bar',label:'Khối Lượng DC',data:dc,backgroundColor:'rgba(251,191,36,0.55)',borderRadius:2,barPercentage:0.45,order:3},
+      {type:'line',label:'Chu Kỳ',data:cyc,borderColor:'#60a5fa',backgroundColor:'transparent',
+       pointRadius:2,pointBackgroundColor:'#60a5fa',borderWidth:1.5,tension:0.5,fill:false,order:1}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{
+        backgroundColor:'#1a2235',titleColor:'#94a3b8',bodyColor:'#e2e8f0',borderColor:'#1f2d40',borderWidth:1,
+        callbacks:{label:c=>`${c.dataset.label}: ${c.raw}`}
+      }},
+      scales:{
+        x:{grid:{color:'#1a2235'},ticks:{color:'#546a82',font:{size:9},autoSkip:false,maxRotation:0,
+          callback:(v,i)=>String(labels[i]).padStart(2,'0')}},
+        y:{grid:{color:'#1f2d40'},ticks:{color:'#546a82',font:{size:9}},min:0,max:105,
+          title:{display:true,text:'Chiêm Tinh',color:'#546a82',font:{size:9}}}
+      }
+    }
+  });
+}
+
+// Init: set current month/year
+(function(){
+  const now = new Date();
+  const mSel = document.getElementById('sel-m');
+  const ySel = document.getElementById('sel-y');
+  const cm = now.getMonth()+1, cy = now.getFullYear();
+  [...mSel.options].forEach(o=>{ if(parseInt(o.value)===cm) o.selected=true; });
+  [...ySel.options].forEach(o=>{ if(parseInt(o.value)===cy) o.selected=true; });
+  selDay = now.getDate();
+  render();
+})();
+</script>
+</body>
+</html>
