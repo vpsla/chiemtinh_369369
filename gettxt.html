@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trích Xuất Truyện - Tải Trực Tiếp Theo Đuôi URL</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+            box-sizing: border-box;
+        }
+        h2 {
+            margin-top: 0;
+            color: #333;
+            text-align: center;
+        }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            flex: 1;
+            padding: 12px;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        #downloadBtn {
+            background: #28a745;
+        }
+        #downloadBtn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        #stopBtn {
+            background: #dc3545;
+            display: none;
+        }
+        #status {
+            margin-top: 15px;
+            font-weight: bold;
+            text-align: center;
+            color: #007bff;
+            white-space: pre-line;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>📥 Tải Truyện Trực Tiếp Theo URL</h2>
+    
+    <label for="urlInput">Nhập URL trang đầu của truyện:</label>
+    <input type="text" id="urlInput" placeholder="Ví dụ: https://doct.biz/phi/">
+    
+    <div class="btn-group">
+        <button id="downloadBtn">Bắt đầu tải truyện</button>
+        <button id="stopBtn">🛑 Dừng & Lưu File</button>
+    </div>
+    
+    <div id="status"></div>
+</div>
+
+<script>
+let allText = [];
+let fileName = "truyen.txt";
+let isRunning = false;
+let shouldStopManual = false;
+let targetUrls = []; // Danh sách các URL chương sinh tự động
+
+// Hàm của bạn: Lấy số đuôi cao nhất từ selector phân trang
+function getLastPage(doc){
+    const pageLinks = doc.querySelectorAll(".wp-pagenavi a.page");
+    let maxPage = 1;
+
+    pageLinks.forEach(link => {
+        const href = link.href.replace(/\/$/, "");
+        const match = href.match(/\/(\d+)$/);
+        if(match){
+            const page = parseInt(match[1]);
+            if(page > maxPage){
+                maxPage = page;
+            }
+        }
+    });
+    return maxPage;
+}
+
+document.getElementById("downloadBtn").onclick = async function() {
+    const urlInput = document.getElementById("urlInput").value.trim();
+    const btn = document.getElementById("downloadBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const statusDiv = document.getElementById("status");
+
+    if (!urlInput) {
+        alert("Vui lòng nhập URL truyện!");
+        return;
+    }
+
+    // Khởi tạo lại trạng thái
+    allText = [];
+    targetUrls = [];
+    isRunning = true;
+    shouldStopManual = false;
+    btn.disabled = true;
+    stopBtn.style.display = "block";
+    statusDiv.textContent = "Đang kết nối trang gốc để tìm số lượng chương...";
+
+    try {
+        // Chuẩn hóa URL gốc (loại bỏ số đuôi nếu có để lấy gốc sạch)
+        let baseURL = urlInput;
+        if (/\/\d+\/?$/.test(baseURL)) {
+            baseURL = baseURL.replace(/\/\d+\/?$/, "/");
+        } else if (!baseURL.endsWith("/")) {
+            baseURL += "/";
+        }
+
+        // Tải trang đầu tiên để kích hoạt hàm dò số trang cuối của bạn
+        const firstPageRes = await fetch(baseURL);
+        if (!firstPageRes.ok) throw new Error("Không thể kết nối đến URL bạn nhập.");
+        
+        const firstPageHtml = await firstPageRes.text();
+        const firstPageDoc = new DOMParser().parseFromString(firstPageHtml, "text/html");
+        
+        // Lấy tiêu đề truyện làm tên file txt
+        let title = firstPageDoc.querySelector("h1")?.innerText || "truyen";
+        title = title.replace(/[\\/:*?"<>|]/g, "");
+        fileName = title + ".txt";
+
+        // Tìm số đuôi cao nhất (Ví dụ: 38)
+        const maxLimitChapters = getLastPage(firstPageDoc);
+        statusDiv.textContent = `Đã phát hiện tổng số: ${maxLimitChapters} chương.\nĐang tiến hành tải thẳng dữ liệu...`;
+
+        // TẠO DANH SÁCH URL: Trang 1 giữ nguyên gốc, trang 2 trở đi thêm số đuôi vào sau
+        for (let i = 1; i <= maxLimitChapters; i++) {
+            if (i === 1) {
+                targetUrls.push(baseURL); // Số 1: https://doct.biz/phi/
+            } else {
+                targetUrls.push(`${baseURL}${i}/`); // Số 2 trở đi: https://doct.biz/phi/2/
+            }
+        }
+
+        // BẮT ĐẦU TẢI TRỰC TIẾP TỪ DANH SÁCH URL VỪA TẠO (Song song 5 luồng)
+        let finished = 0;
+
+        async function fetchChapterContent(index, url) {
+            if (!isRunning || shouldStopManual) return;
+
+            try {
+                const res = await fetch(url);
+                if (res.ok) {
+                    const html = await res.text();
+                    const doc = new DOMParser().parseFromString(html, "text/html");
+                    const content = doc.querySelector(".entry-content");
+
+                    if (content) {
+                        const remove = content.querySelector("div");
+                        if (remove) remove.remove();
+
+                        const text = content.innerText.trim();
+                        // Ghi dữ liệu trực tiếp vào mảng theo thứ tự vòng lặp
+                        allText[index] = `--- Chương ${index + 1} ---\n\n${text}`;
+                    }
+                }
+            } catch (e) {
+                console.log("Lỗi tải tại URL:", url);
+            }
+
+            finished++;
+            let percent = Math.floor((finished / targetUrls.length) * 100);
+            btn.textContent = `Đang tải ${finished}/${targetUrls.length} (${percent}%)`;
+        }
+
+        async function runParallel(limit) {
+            let index = 0;
+            async function worker() {
+                while (index < targetUrls.length && isRunning && !shouldStopManual) {
+                    let current = index++;
+                    await fetchChapterContent(current, targetUrls[current]);
+                }
+            }
+
+            const workers = [];
+            for (let i = 0; i < limit; i++) {
+                workers.push(worker());
+            }
+            await Promise.all(workers);
+        }
+
+        await runParallel(5);
+
+        if (shouldStopManual) {
+            statusDiv.textContent = "🛑 Tiến trình đã được dừng thủ công. Đang đóng gói dữ liệu...";
+        }
+
+        exportFile();
+
+    } catch (error) {
+        alert("Có lỗi xảy ra: " + error.message);
+        resetUI();
+    }
+};
+
+document.getElementById("stopBtn").onclick = function() {
+    if (isRunning) {
+        shouldStopManual = true;
+        isRunning = false;
+        document.getElementById("status").textContent = "Đang dừng các kết nối...";
+    }
+};
+
+function exportFile() {
+    const validTexts = allText.filter(t => t);
+    
+    if (validTexts.length === 0) {
+        alert("Không tải thành công chương nào.");
+        resetUI();
+        return;
+    }
+
+    const finalText = validTexts.join("\n\n\n");
+    const blob = new Blob([finalText], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName;
+    a.click();
+
+    document.getElementById("status").textContent = `✅ Hoàn tất thành công!\nĐã tải xong: ${validTexts.length}/${targetUrls.length} chương.\nTên file: ${fileName}`;
+    resetUI();
+}
+
+function resetUI() {
+    isRunning = false;
+    shouldStopManual = false;
+    document.getElementById("downloadBtn").disabled = false;
+    document.getElementById("downloadBtn").textContent = "Bắt đầu tải truyện";
+    document.getElementById("stopBtn").style.display = "none";
+}
+</script>
+
+</body>
+</html>
